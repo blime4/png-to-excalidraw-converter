@@ -1,0 +1,12 @@
+# 开发期第三方调试包（官方 Excalidraw/React UMD，体积大，需要时按 README 自行下载）
+_dev/vendor/
+
+# 测试运行产物
+_dev/*-report.json
+_dev/probe-out.json
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

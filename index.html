@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PNG → Excalidraw 转换器 · 把位图变成可编辑的手绘元素</title>
+<meta name="description" content="纯前端工具：把 PNG / JPG / WebP / SVG 转成 Excalidraw 的 .excalidraw 文件，所有元素都可编辑、可拖动。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%236965db'/%3E%3Cpath d='M26 68c10-30 20-38 26-30s-6 26 2 30 18-24 20-14' stroke='white' stroke-width='7' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ 顶栏 ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 100 100" width="26" height="26" aria-hidden="true">
+          <rect width="100" height="100" rx="24" fill="#6965db"/>
+          <path d="M24 70c10-32 22-40 28-31s-7 27 2 31 19-25 21-14"
+                stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>PNG <span class="arrow">→</span> Excalidraw</h1>
+        <p>把位图变成可编辑、可拖动的手绘元素</p>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="badge-offline" title="所有处理都在你的浏览器里完成，图片不会上传到任何服务器">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z" stroke-linejoin="round"/>
+        </svg>
+        100% 本地处理
+      </div>
+      <button class="btn btn-ghost" id="helpBtn" type="button">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 115 0c0 1.7-2.5 2-2.5 4" stroke-linecap="round"/><circle cx="12" cy="17.2" r=".6" fill="currentColor" stroke="none"/>
+        </svg>
+        怎么用
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ 主体 ============ -->
+  <main class="layout">
+
+    <!-- ---------- 左侧控制面板 ---------- -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- 1. 素材 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="step-dot">1</span>
+          <h2>选择素材</h2>
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button"
+             aria-label="点击选择图片，或把图片拖到这里">
+          <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml,.svg" hidden />
+          <svg class="dz-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="9" width="36" height="30" rx="5"/>
+            <circle cx="17" cy="20" r="3.4"/>
+            <path d="M10 34l9.5-10 7 7.5L32 26l6 8"/>
+          </svg>
+          <p class="dz-title">拖入图片，或<span class="link">点击选择</span></p>
+          <p class="dz-sub">支持 PNG / JPG / WebP / GIF / BMP / SVG</p>
+          <p class="dz-paste">也可以直接 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴截图</p>
+        </div>
+
+        <div class="file-chip is-hidden" id="fileChip">
+          <div class="file-thumb" id="fileThumb"></div>
+          <div class="file-info">
+            <span class="file-name" id="fileName">—</span>
+            <span class="file-meta" id="fileMeta">—</span>
+          </div>
+          <button class="icon-btn" id="fileClear" title="移除素材" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="sample-row">
+          <span class="sample-label">没有素材？试试：</span>
+          <button class="chip" data-sample="logo" type="button">示例 Logo</button>
+          <button class="chip" data-sample="sketch" type="button">示例草图</button>
+        </div>
+      </section>
+
+      <!-- 2. 矢量化参数 -->
+      <section class="panel" id="panelTrace">
+        <div class="panel-head">
+          <span class="step-dot">2</span>
+          <h2>矢量化参数</h2>
+          <span class="panel-note">位图专用</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label">保真度</label>
+          <div class="segmented segmented-4" id="fidelityGroup" role="tablist">
+            <button type="button" data-value="exact">极致还原</button>
+            <button type="button" data-value="high" class="is-active">高保真</button>
+            <button type="button" data-value="balanced">均衡</button>
+            <button type="button" data-value="sketch">手绘感</button>
+          </div>
+          <p class="field-hint" id="fidelityHint">保真与体积的平衡，适合大多数素材（默认）。</p>
+        </div>
+
+        <div class="field">
+          <label class="field-label">转换模式</label>
+          <div class="segmented" id="modeGroup" role="tablist">
+            <button type="button" data-value="color" class="is-active">彩色</button>
+            <button type="button" data-value="gray">灰度</button>
+            <button type="button" data-value="bw">黑白</button>
+            <button type="button" data-value="minimal">极简</button>
+          </div>
+          <p class="field-hint" id="modeHint">自动聚类出主要颜色，适合 logo、插画、扁平图标。</p>
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="colorCount">颜色数量</label>
+            <output id="colorCountVal">12</output>
+          </div>
+          <input type="range" id="colorCount" min="2" max="40" step="1" value="12" />
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="detail">轮廓精度</label>
+            <output id="detailVal">5</output>
+          </div>
+          <input type="range" id="detail" min="1" max="10" step="1" value="5" />
+          <p class="field-hint">越高轮廓越贴合原图，但元素更多、文件更大。</p>
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="blur">平滑降噪</label>
+            <output id="blurVal">2</output>
+          </div>
+          <input type="range" id="blur" min="0" max="10" step="1" value="2" />
+          <p class="field-hint">有噪点、渐变或照片时调高，边缘更干净。</p>
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="pathomit">忽略碎块</label>
+            <output id="pathomitVal">10</output>
+          </div>
+          <input type="range" id="pathomit" min="0" max="60" step="1" value="10" />
+          <p class="field-hint">丢弃小于该尺寸的杂色小块，能显著减少元素数量。</p>
+        </div>
+
+        <div class="field field-inline">
+          <label class="switch">
+            <input type="checkbox" id="removeBg" checked />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">剔除背景底色</span>
+          </label>
+          <input type="color" id="bgColor" value="#ffffff" class="color-mini" title="背景色（自动识别，可手动改）" />
+        </div>
+      </section>
+
+      <!-- 3. Excalidraw 参数 -->
+      <section class="panel" id="panelEx">
+        <div class="panel-head">
+          <span class="step-dot">3</span>
+          <h2>Excalidraw 样式</h2>
+        </div>
+
+        <div class="field">
+          <label class="field-label">元素形态</label>
+          <div class="segmented" id="styleGroup" role="tablist">
+            <button type="button" data-value="fill" class="is-active">实心色块</button>
+            <button type="button" data-value="both">色块+描边</button>
+            <button type="button" data-value="stroke">仅轮廓</button>
+          </div>
+          <p class="field-hint" id="styleHint">每块颜色成为一个可拖动的闭合图形。</p>
+        </div>
+
+        <div class="field">
+          <label class="field-label">填充纹理</label>
+          <div class="segmented segmented-4" id="fillStyleGroup" role="tablist">
+            <button type="button" data-value="solid" class="is-active">实心</button>
+            <button type="button" data-value="hachure">斜线</button>
+            <button type="button" data-value="cross-hatch">交叉</button>
+            <button type="button" data-value="zigzag">锯齿</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">手绘强度</label>
+          <div class="segmented" id="roughGroup" role="tablist">
+            <button type="button" data-value="0" class="is-active">精准</button>
+            <button type="button" data-value="1">手绘</button>
+            <button type="button" data-value="2">潦草</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">线条粗细</label>
+          <div class="segmented" id="strokeGroup" role="tablist">
+            <button type="button" data-value="1" class="is-active">细</button>
+            <button type="button" data-value="2">中</button>
+            <button type="button" data-value="4">粗</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="opacity">不透明度</label>
+            <output id="opacityVal">100%</output>
+          </div>
+          <input type="range" id="opacity" min="20" max="100" step="5" value="100" />
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="scale">输出尺寸</label>
+            <output id="scaleVal">1.0×</output>
+          </div>
+          <input type="range" id="scale" min="0.2" max="4" step="0.1" value="1" />
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="maxElements">元素数量上限</label>
+            <output id="maxElementsVal">3000</output>
+          </div>
+          <input type="range" id="maxElements" min="100" max="12000" step="100" value="3000" />
+          <p class="field-hint">超出时自动丢弃面积最小的图形，保证 Excalidraw 流畅。</p>
+        </div>
+
+        <div class="field field-inline">
+          <label class="switch">
+            <input type="checkbox" id="grouping" checked />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">保留 SVG 分组结构</span>
+          </label>
+        </div>
+      </section>
+
+      <div class="sidebar-foot">
+        <button class="btn btn-primary btn-block" id="convertBtn" type="button" disabled>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12h13m0 0l-5-5m5 5l-5 5"/><path d="M20 4v16" opacity=".35"/>
+          </svg>
+          开始转换
+        </button>
+        <button class="btn btn-ghost btn-block" id="resetBtn" type="button">重置全部参数</button>
+      </div>
+    </aside>
+
+    <!-- ---------- 右侧舞台 ---------- -->
+    <section class="stage">
+
+      <div class="stage-bar">
+        <div class="view-tabs" id="viewTabs">
+          <button type="button" data-view="original" class="is-active">原图</button>
+          <button type="button" data-view="svg">矢量图</button>
+          <button type="button" data-view="excalidraw">Excalidraw 预览</button>
+        </div>
+
+        <div class="stage-actions">
+          <label class="switch switch-sm" title="用 rough.js 模拟 Excalidraw 的手绘渲染">
+            <input type="checkbox" id="roughPreview" checked />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">手绘预览</span>
+          </label>
+          <button class="icon-btn" id="zoomOut" title="缩小" type="button">−</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button class="icon-btn" id="zoomIn" title="放大" type="button">+</button>
+          <button class="icon-btn" id="zoomFit" title="适应窗口" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas-inner" id="canvasInner">
+          <div class="pane is-active" id="paneOriginal"><div class="empty-hint">还没有素材</div></div>
+          <div class="pane" id="paneSvg"><div class="empty-hint">还没有矢量结果</div></div>
+          <div class="pane" id="paneExcalidraw"><div class="empty-hint">还没有 Excalidraw 结果</div></div>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-art">
+            <svg viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="12" width="46" height="38" rx="7" stroke-dasharray="5 5"/>
+              <circle cx="24" cy="27" r="4.5"/>
+              <path d="M12 45l11-12 8 9 6-5 8 8"/>
+              <path d="M66 30h44M66 44h34M66 58h40" opacity=".55"/>
+              <path d="M96 8l12 0-6 8z" fill="currentColor" stroke="none" opacity=".5"/>
+            </svg>
+          </div>
+          <h3>拖一张图片进来开始</h3>
+          <p>工具会把图片矢量化，再翻译成 Excalidraw 原生元素——<br/>生成的不是"贴图"，而是可以选中、拖动、改色、重绘的图形。</p>
+        </div>
+      </div>
+
+      <div class="stage-stats" id="stageStats">
+        <div class="stat is-hidden" id="statEls"><b>—</b><span>个元素</span></div>
+        <div class="stat is-hidden" id="statPaths"><b>—</b><span>条路径</span></div>
+        <div class="stat is-hidden" id="statColors"><b>—</b><span>种颜色</span></div>
+        <div class="stat is-hidden" id="statTime"><b>—</b><span>毫秒</span></div>
+        <div class="stat is-hidden" id="statSize"><b>—</b><span>文件大小</span></div>
+        <div class="stat-msg" id="statMsg">准备就绪</div>
+      </div>
+
+      <div class="stage-bar stage-bar-bottom" id="exportBar">
+        <div class="export-left">
+          <button class="btn btn-primary btn-sm" id="copyClipboard" type="button" disabled>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="11" height="11" rx="2.4"/><path d="M5 15V6a2 2 0 012-2h9"/>
+            </svg>
+            复制，直接粘贴进 Excalidraw
+          </button>
+          <button class="btn btn-outline btn-sm" id="downloadExcalidraw" type="button" disabled>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M4 19h16"/>
+            </svg>
+            下载 .excalidraw
+          </button>
+        </div>
+        <div class="export-right">
+          <button class="btn btn-ghost btn-sm" id="downloadSvg" type="button" disabled>下载 .svg</button>
+          <button class="btn btn-ghost btn-sm" id="copyJson" type="button" disabled>复制 JSON</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ 进度遮罩 ============ -->
+<div class="overlay is-hidden" id="overlay">
+  <div class="overlay-card">
+    <div class="spinner"></div>
+    <p id="overlayText">正在处理…</p>
+    <div class="progress"><div class="progress-bar" id="overlayBar"></div></div>
+  </div>
+</div>
+
+<!-- ============ 帮助弹窗 ============ -->
+<div class="modal is-hidden" id="helpModal">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <button class="icon-btn modal-close" data-close type="button">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2>它是怎么工作的？</h2>
+    <ol class="how-list">
+      <li><b>去色聚类</b>　把图片里的几万种颜色聚合成几十种主色，也就是 png2svg.com 那一类工具做的事。</li>
+      <li><b>轮廓追踪</b>　对每种颜色找出边界，用直线 + 二次贝塞尔曲线拟合，得到 SVG 路径。</li>
+      <li><b>翻译成 Excalidraw</b>　把每条路径拆成闭合多边形，连同颜色、线宽、手绘强度一起写成 Excalidraw 的元素对象。</li>
+    </ol>
+    <h3>导出后怎么用</h3>
+    <ul class="how-list how-list-dot">
+      <li>点「复制」按钮，然后到 excalidraw.com 按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 直接粘贴；</li>
+      <li>或下载 <code>.excalidraw</code> 文件，拖进 Excalidraw 的画布；</li>
+      <li>粘贴进来的是原生元素，可以逐个选中、拖动、改颜色、换线型。</li>
+    </ul>
+    <h3>效果调不好？</h3>
+    <ul class="how-list how-list-dot">
+      <li>元素太多 → 调大「忽略碎块」，调低「颜色数量」，调低「轮廓精度」；</li>
+      <li>形状糊在一起 → 调高「轮廓精度」，把「平滑降噪」降到 0；</li>
+      <li>想要线稿感 → 模式选「黑白」，「元素形态」选「仅轮廓」；</li>
+      <li>照片类素材天然不适合矢量化，建议用 logo、图标、线稿、扁平插画。</li>
+    </ul>
+    <p class="modal-foot">所有计算都在浏览器本地完成，图片不会离开你的电脑。</p>
+  </div>
+</div>
+
+<script src="assets/js/vendor/rough.js"></script>
+<script src="assets/js/excalidraw-core.js"></script>
+<script src="assets/js/preview.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

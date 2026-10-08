@@ -1,0 +1,6 @@
+# 统一换行符，避免 Windows 上提交 CRLF 造成整文件 diff
+* text=auto eol=lf
+
+*.png binary
+*.woff2 binary
+*.excalidraw binary
