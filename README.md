@@ -1,5 +1,7 @@
 # PNG → Excalidraw 转换器
 
+**在线使用** 👉 <https://blime4.github.io/png-to-excalidraw-converter/>
+
 把位图（PNG / JPG / WebP / GIF / BMP）或 SVG 转成 **Excalidraw 原生元素**的纯前端工具。
 
 生成的不是贴图，而是可以逐个选中、拖动、改色、重绘的闭合图形，可直接拖进 [excalidraw.com](https://excalidraw.com) 编辑。
@@ -23,8 +25,13 @@
 
 ## 快速开始
 
+**方式一（推荐）** —— 直接打开在线版，无需安装：
+<https://blime4.github.io/png-to-excalidraw-converter/>
+
+**方式二** —— 本地运行：
+
 ```bash
-git clone <this-repo>
+git clone https://github.com/blime4/png-to-excalidraw-converter.git
 cd png-to-excalidraw-converter
 # 直接双击 index.html 即可，或在项目根目录起个静态服务器
 python -m http.server 5173
